@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  DISPATCHER
+  PACKER
+  OPERATOR
+  CUSTOMER
+}
+
+enum OrderStatus {
+  PENDING
+  PACKED
+  DISPATCHED
+  DELIVERED
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      Role     @default(CUSTOMER)
+  orders    Order[]  @relation("CustomerOrders")
+  dispatched Order[] @relation("DispatcherOrders")
+  packed     Order[] @relation("PackerOrders")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  items       OrderItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id            String       @id @default(cuid())
+  status        String       @default("VERIFICATION") // "VERIFICATION" | "PRINTING" | "PACKING" | "DISPATCH" | "COMPLETED"
+  customerName  String       @default("")
+  destination   String       @default("")
+  customerId    String
+  customer      User         @relation("CustomerOrders", fields: [customerId], references: [id])
+  dispatcherId  String?
+  dispatcher    User?        @relation("DispatcherOrders", fields: [dispatcherId], references: [id])
+  packerId      String?
+  packer        User?        @relation("PackerOrders", fields: [packerId], references: [id])
+  
+  // Custom print simulation fields
+  designName    String       @default("")
+  dimensions    String       @default("")
+  sheets        String       @default("")
+  weight        String       @default("")
+  price         String       @default("")
+  itemsList     String       @default("[]") // JSON array of items e.g. ["Ayam Lengkuas x2"]
+  checkedItems  String       @default("[]") // JSON array of checked items
+  progress      Int          @default(0)
+  driver        String       @default("")
+  printing      Boolean      @default(false)
+  
+  items         OrderItem[]
+  paymentProof  PaymentProof?
+  validation    OrderValidation?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float
+}
+
+model PaymentProof {
+  id        String        @id @default(cuid())
+  orderId   String        @unique
+  order     Order         @relation(fields: [orderId], references: [id])
+  imageUrl  String
+  status    PaymentStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model OrderValidation {
+  id               String   @id @default(uuid())
+  orderId          String   @unique
+  order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fileSizeMb       Float
+  resolutionDpi    Int
+  widthCm          Float
+  heightCm         Float
+  passedValidation Boolean  @default(false)
+  errorLogs        String?  // e.g., "Dimensions exceed 57.5x250cm" or "Lines too thin (<1mm)"
+  createdAt        DateTime @default(now())
+}
