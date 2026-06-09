@@ -85,7 +85,7 @@ export default function Home() {
                       <span className="text-primary text-[10px] bg-white border border-primary/20 px-2 py-0.5 rounded-full font-black">Diskon 5% Applied</span>
                     </div>
                     <div className="flex justify-between items-baseline pt-1">
-                      <span className="text-3xl font-black text-secondary leading-tight">Rp 2.450.000</span>
+                      <span className="text-3xl font-black text-secondary leading-tight">0</span>
                     </div>
                   </div>
 

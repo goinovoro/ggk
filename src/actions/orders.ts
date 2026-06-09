@@ -79,6 +79,7 @@ export async function createOrder(data: {
   weight: string
   price: string
   items: string[]
+  missingFonts?: string[]
 }) {
   const count = await prisma.order.count()
   const orderId = `ORD-${101 + count}`
@@ -110,7 +111,10 @@ export async function createOrder(data: {
           resolutionDpi: 300,
           widthCm,
           heightCm,
-          passedValidation: true
+          passedValidation: !data.missingFonts || data.missingFonts.length === 0,
+          errorLogs: data.missingFonts && data.missingFonts.length > 0 
+            ? `Missing Typography: ${data.missingFonts.join(", ")}` 
+            : null
         }
       }
     },

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
@@ -58,7 +58,21 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
   const [dimensions, setDimensions] = useState("")
 
   // Step 2: Upload Files State
-  const [designFiles, setDesignFiles] = useState<string[]>([])
+  const [designFiles, setDesignFiles] = useState<File[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setDesignFiles([...designFiles, ...Array.from(e.dataTransfer.files)])
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setDesignFiles([...designFiles, ...Array.from(e.target.files)])
+    }
+  }
 
   // Step 3: Payment State
   const [paymentProofFile, setPaymentProofFile] = useState<string>("")
@@ -95,13 +109,16 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
       "STICKER_GGK_PRINT_ROLL.cdr"
     ]
     const randomFile = mockFiles[Math.floor(Math.random() * mockFiles.length)]
-    if (!designFiles.includes(randomFile)) {
-      setDesignFiles([...designFiles, randomFile])
+    if (!designFiles.some(f => f.name === randomFile)) {
+      const mockFile = new File(["GGK vector binary mock data"], randomFile, {
+        type: randomFile.endsWith(".pdf") ? "application/pdf" : "application/cdr"
+      })
+      setDesignFiles([...designFiles, mockFile])
     }
   }
 
   // Trigger background Smart Conversion process
-  const startSmartConversion = async (files: string[]) => {
+  const startSmartConversion = async (files: File[]) => {
     if (files.length === 0) return
     
     const targetFile = files[0]
@@ -116,10 +133,7 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
       
       // Make a real multipart/form-data request to the /api/convert endpoint!
       const formData = new FormData()
-      const mockFile = new File(["GGK vector binary mock data"], targetFile, {
-        type: targetFile.endsWith(".pdf") ? "application/pdf" : "application/cdr"
-      })
-      formData.append("file", mockFile)
+      formData.append("file", targetFile)
       
       const res = await fetch("/api/convert", {
         method: "POST",
@@ -148,7 +162,7 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
 
   // Simulator helper: deletes a design file
   const handleRemoveFile = (fileName: string) => {
-    setDesignFiles(designFiles.filter((f) => f !== fileName))
+    setDesignFiles(designFiles.filter((f) => f.name !== fileName))
   }
 
   // Simulator helper: uploads a mock transfer slip
@@ -171,7 +185,8 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
         sheets: `${sheetsCount} sheets`,
         weight: `${((typeof sheetsCount === 'number' ? sheetsCount : 0) * 0.02).toFixed(1)}kg`,
         price: formattedPrice,
-        items: [`Kaos ${designName.split(' ')[0]} x2`, `DTF Sheet ${designName.split(' ')[0]} x1`]
+        items: [`Kaos ${designName.split(' ')[0]} x2`, `DTF Sheet ${designName.split(' ')[0]} x1`],
+        missingFonts: preFlightDetails?.missingFonts
       })
       
       setOrders([newOrder, ...orders])
@@ -456,7 +471,7 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center p-4 bg-bg-tint border border-primary/15 rounded-2xl shadow-inner mt-4">
                       <div className="md:col-span-1 flex flex-col justify-center text-left">
                         <span className="text-[9px] uppercase tracking-widest text-slate-500 font-black">Estimasi Harga</span>
-                        <span className="text-2xl font-black text-primary mt-1">{formattedPrice}</span>
+                        <span className="text-2xl font-black text-primary mt-1">{calculatedPrice === 0 ? "0" : formattedPrice}</span>
                       </div>
                       <div className="md:col-span-2">
                         <Button
@@ -497,9 +512,19 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
 
                     {/* File Dropzone */}
                     <div 
-                      onClick={handleAddMockFile}
+                      onClick={() => fileInputRef.current?.click()}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={handleFileDrop}
                       className="border-dashed border-2 border-slate-200/80 bg-slate-50/50 hover:bg-slate-50 hover:border-primary/40 rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 shadow-inner flex flex-col items-center justify-center"
                     >
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        className="hidden" 
+                        multiple 
+                        accept=".cdr,.pdf,.ai,.tiff" 
+                        onChange={handleFileSelect} 
+                      />
                       <div className="p-3 bg-white border border-slate-100 rounded-full shadow-sm text-slate-400 mb-3 group-hover:text-primary">
                         <UploadCloud size={24} className="text-primary animate-bounce" />
                       </div>
@@ -516,12 +541,13 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
                             <div key={i} className="p-3 bg-bg-tint/70 border border-primary/10 rounded-xl flex justify-between items-center shadow-inner">
                               <div className="flex items-center gap-3">
                                 <ImageIcon size={16} className="text-primary shrink-0" />
-                                <span className="text-xs font-bold text-neutral-dark font-mono truncate max-w-[280px]">{file}</span>
+                                <span className="text-xs font-bold text-neutral-dark font-mono truncate max-w-[280px]">{file.name}</span>
                               </div>
                               <Button 
+                                type="button"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  handleRemoveFile(file)
+                                  handleRemoveFile(file.name)
                                 }}
                                 variant="ghost" 
                                 size="icon" 
@@ -730,18 +756,31 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
                                     { label: "Resolution", val: preFlightDetails?.resolution.split(" ")[0], success: true },
                                     { label: "Original Size", val: preFlightDetails?.fileSize, success: true },
                                     { label: "Conversion Time", val: preFlightDetails?.conversionTime, success: true },
-                                    { label: "Verification Status", val: "PASS", success: true }
+                                    { label: "Verification", val: "PASS", success: true },
+                                    { label: "Accuracy", val: preFlightDetails?.accuracyScore, success: preFlightDetails?.accuracyScore === "100%" },
+                                    { label: "Font Status", val: preFlightDetails?.accuracyStatus, success: preFlightDetails?.accuracyScore === "100%" }
                                   ].map((b, i) => (
-                                    <div key={i} className="p-2.5 bg-slate-50 border border-slate-200/60 rounded-xl">
+                                    <div key={i} className={`p-2.5 border rounded-xl ${b.success ? 'bg-slate-50 border-slate-200/60' : 'bg-amber-50 border-amber-200/60'} ${b.label === 'Font Status' ? 'col-span-2' : ''}`}>
                                       <span className="text-[8px] text-slate-400 font-bold block leading-none">{b.label}</span>
-                                      <span className="text-xs font-black text-secondary mt-1 flex items-center gap-1">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                        {b.val}
+                                      <span className={`text-xs font-black mt-1 flex items-center gap-1 ${b.success ? 'text-secondary' : 'text-amber-600'}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${b.success ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                        <span className={b.label === 'Font Status' ? '' : 'truncate'}>{b.val}</span>
                                       </span>
                                     </div>
                                   ))}
                                 </div>
-                                <div className="p-2 bg-emerald-50 border border-emerald-500/20 text-emerald-700 text-[10px] font-black rounded-lg flex items-center gap-1.5 shadow-sm">
+                                
+                                {preFlightDetails?.missingFonts && preFlightDetails.missingFonts !== "None" && (
+                                  <div className="p-2 bg-amber-50 border border-amber-500/20 text-amber-700 text-[10px] font-black rounded-lg flex items-start gap-1.5 shadow-sm mt-2">
+                                    <AlertCircle size={12} className="text-amber-600 shrink-0 mt-0.5" />
+                                    <div>
+                                      Missing Fonts: {preFlightDetails.missingFonts}
+                                      <div className="text-[9px] font-normal mt-0.5">Some fonts will be substituted by the server.</div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="p-2 bg-emerald-50 border border-emerald-500/20 text-emerald-700 text-[10px] font-black rounded-lg flex items-center gap-1.5 shadow-sm mt-2">
                                   <CheckCircle2 size={12} className="text-emerald-600" />
                                   Ready to Print: Alpha Channel transparent validation PASS
                                 </div>
