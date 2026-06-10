@@ -49,3 +49,7 @@ next-env.d.ts
 
 # graphify analysis output
 /graphify-out/
+
+# local font storage cache
+/.fonts/
+/tmp_uploads/

@@ -76,11 +76,40 @@ export async function POST(req: Request) {
       ? ['Arial', 'Montserrat', 'Comic Sans'] 
       : ['Helvetica', 'Poppins', 'Fira Code']
 
+    const isWindowsPlatform = process.platform === 'win32'
+    const FONT_DIR = isWindowsPlatform 
+      ? path.join(process.cwd(), '.fonts') 
+      : '/usr/share/fonts/truetype/custom/'
+
+    // Scan FONT_DIR for custom uploaded/installed fonts
+    const customFonts: string[] = []
+    try {
+      const exists = await fs.stat(FONT_DIR).then(s => s.isDirectory()).catch(() => false)
+      if (exists) {
+        const files = await fs.readdir(FONT_DIR)
+        files.forEach(file => {
+          const ext = path.extname(file).toLowerCase()
+          if (['.ttf', '.otf', '.woff', '.woff2'].includes(ext)) {
+            const fontName = path.basename(file, ext)
+            customFonts.push(fontName)
+          }
+        })
+      }
+    } catch (err) {
+      console.warn("Error reading custom font directory:", err)
+    }
+
     const installedFonts = new Set(['Arial', 'Helvetica', 'Times New Roman', 'Montserrat', 'Poppins'])
-    const missingFontsDetected: string[] = []
     
+    const isFontInstalled = (font: string) => {
+      if (installedFonts.has(font)) return true
+      const normFont = font.toLowerCase().replace(/[^a-z0-9]/g, '')
+      return customFonts.some(f => f.toLowerCase().replace(/[^a-z0-9]/g, '') === normFont)
+    }
+
+    const missingFontsDetected: string[] = []
     for (const font of mockExtractedFonts) {
-      if (!installedFonts.has(font)) {
+      if (!isFontInstalled(font)) {
         missingFontsDetected.push(font)
       }
     }

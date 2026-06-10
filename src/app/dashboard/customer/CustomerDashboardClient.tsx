@@ -83,6 +83,12 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
   const [conversionPreview, setConversionPreview] = useState<string>("")
   const [preFlightDetails, setPreFlightDetails] = useState<any>(null)
   const [conversionError, setConversionError] = useState<string>("")
+
+  // Font Upload State
+  const [fontUploading, setFontUploading] = useState(false)
+  const [fontUploadError, setFontUploadError] = useState("")
+  const [fontUploadSuccess, setFontUploadSuccess] = useState("")
+  const fontFileInputRef = useRef<HTMLInputElement>(null)
   
   // Calculate price dynamically: Rp 35,000/meter for Elite Premium DTF, Rp 25,000/meter for Standard Grade
   const pricePerMeter = dimensions === "Elite Premium DTF" 
@@ -157,6 +163,53 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
       console.error("Smart Conversion error:", err)
       setConversionError(err.message || "Smart Conversion failed. Check server logs.")
       setConversionState("failed")
+    }
+  }
+
+  const handleFontUpload = async (file: File) => {
+    setFontUploading(true)
+    setFontUploadError("")
+    setFontUploadSuccess("")
+    
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      
+      const res = await fetch("/api/upload-font", {
+        method: "POST",
+        body: formData
+      })
+      
+      const data = await res.json()
+      
+      if (!res.ok || data.error) {
+        throw new Error(data.message || "Failed to upload font")
+      }
+      
+      setFontUploadSuccess(`Font "${file.name}" uploaded successfully! Re-verifying design...`)
+      
+      // Auto re-run smart conversion to check with the newly uploaded font!
+      if (designFiles.length > 0) {
+        await startSmartConversion(designFiles)
+      }
+    } catch (err: any) {
+      console.error(err)
+      setFontUploadError(err.message || "Failed to upload font")
+    } finally {
+      setFontUploading(false)
+    }
+  }
+
+  const handleFontDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFontUpload(e.dataTransfer.files[0])
+    }
+  }
+
+  const handleFontSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleFontUpload(e.target.files[0])
     }
   }
 
@@ -770,13 +823,56 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
                                   ))}
                                 </div>
                                 
-                                {preFlightDetails?.missingFonts && preFlightDetails.missingFonts !== "None" && (
-                                  <div className="p-2 bg-amber-50 border border-amber-500/20 text-amber-700 text-[10px] font-black rounded-lg flex items-start gap-1.5 shadow-sm mt-2">
-                                    <AlertCircle size={12} className="text-amber-600 shrink-0 mt-0.5" />
-                                    <div>
-                                      Missing Fonts: {preFlightDetails.missingFonts}
-                                      <div className="text-[9px] font-normal mt-0.5">Some fonts will be substituted by the server.</div>
+                                {preFlightDetails?.missingFonts && preFlightDetails.missingFonts.length > 0 && (
+                                  <div className="space-y-3 mt-4 p-4 bg-amber-50/70 border border-amber-500/25 rounded-2xl shadow-sm text-left">
+                                    <div className="flex gap-2">
+                                      <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                                      <div>
+                                        <p className="text-xs font-black text-amber-800 leading-snug">
+                                          the font you are using seems to be premium or piad font. please upload your font to get 100% accurate.
+                                        </p>
+                                        <p className="text-[10px] text-amber-600 font-bold mt-1">
+                                          Missing Fonts: <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-amber-200">{Array.isArray(preFlightDetails.missingFonts) ? preFlightDetails.missingFonts.join(", ") : preFlightDetails.missingFonts}</span>
+                                        </p>
+                                      </div>
                                     </div>
+
+                                    {/* Font Dropzone */}
+                                    <div 
+                                      onClick={() => fontFileInputRef.current?.click()}
+                                      onDragOver={(e) => e.preventDefault()}
+                                      onDrop={handleFontDrop}
+                                      className="border-dashed border-2 border-amber-300 bg-white hover:bg-amber-50/40 hover:border-amber-500 rounded-xl p-4 text-center cursor-pointer transition-all duration-300 shadow-inner flex flex-col items-center justify-center relative overflow-hidden"
+                                    >
+                                      <input 
+                                        type="file" 
+                                        ref={fontFileInputRef} 
+                                        className="hidden" 
+                                        accept=".ttf,.otf,.woff,.woff2" 
+                                        onChange={handleFontSelect} 
+                                      />
+                                      {fontUploading ? (
+                                        <div className="flex flex-col items-center gap-2">
+                                          <RefreshCw size={20} className="text-amber-600 animate-spin" />
+                                          <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Installing font...</span>
+                                        </div>
+                                      ) : fontUploadSuccess ? (
+                                        <div className="flex flex-col items-center gap-1">
+                                          <CheckCircle2 size={20} className="text-emerald-500" />
+                                          <span className="text-[10px] font-black text-emerald-700">{fontUploadSuccess}</span>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          <UploadCloud size={20} className="text-amber-500 mb-1.5" />
+                                          <p className="font-black text-xs text-amber-800">Drop font file here or browse</p>
+                                          <p className="text-[9px] text-amber-600 font-bold uppercase tracking-wider mt-0.5">Supports: .ttf, .otf, .woff, .woff2</p>
+                                        </>
+                                      )}
+                                    </div>
+
+                                    {fontUploadError && (
+                                      <p className="text-[10px] font-bold text-rose-500 text-center">{fontUploadError}</p>
+                                    )}
                                   </div>
                                 )}
 
