@@ -788,14 +788,21 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
                                     backgroundColor: '#ffffff'
                                   }}
                                 >
-                                  {/* Render transparent PNG inside checkered layout */}
-                                  <img 
-                                    src={conversionPreview} 
-                                    alt="Smart Preview" 
-                                    className="max-w-full max-h-full object-contain drop-shadow-md transition-all duration-500 hover:scale-105"
-                                  />
+                                  {conversionPreview.startsWith("data:application/pdf") ? (
+                                    <embed 
+                                      src={`${conversionPreview}#toolbar=0&navpanes=0&scrollbar=0`} 
+                                      type="application/pdf" 
+                                      className="w-full h-full object-contain rounded-xl"
+                                    />
+                                  ) : (
+                                    <img 
+                                      src={conversionPreview} 
+                                      alt="Smart Preview" 
+                                      className="max-w-full max-h-full object-contain drop-shadow-md transition-all duration-500 hover:scale-105"
+                                    />
+                                  )}
                                   <span className="absolute bottom-1 right-1 bg-emerald-500 text-white text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded shadow-sm">
-                                    PNG PREVIEW
+                                    {conversionPreview.startsWith("data:application/pdf") ? "PDF PREVIEW" : "VECTOR PREVIEW"}
                                   </span>
                                 </div>
                               </div>
