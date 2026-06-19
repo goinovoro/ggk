@@ -137,11 +137,14 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
       await new Promise((resolve) => setTimeout(resolve, 800))
       setConversionStage("Format Check & Processing")
       
-      // Make a real multipart/form-data request to the /api/convert endpoint!
+      // Route request to the local worker tunnel if specified, otherwise hit relative /api/validate-file
+      const workerUrl = process.env.NEXT_PUBLIC_LOCAL_WORKER_URL || ""
+      const endpoint = `${workerUrl}/api/validate-file`
+
       const formData = new FormData()
       formData.append("file", targetFile)
       
-      const res = await fetch("/api/convert", {
+      const res = await fetch(endpoint, {
         method: "POST",
         body: formData
       })
@@ -706,9 +709,9 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
                         {/* 1. Stage Progress Tracker */}
                         <div className="grid grid-cols-3 gap-3 text-center">
                           {[
-                            { num: 1, label: "File Received", activeStage: "File Received", desc: "Source file mounted" },
-                            { num: 2, label: "Format & Convert", activeStage: "Format Check & Processing", desc: "Running Inkscape CLI" },
-                            { num: 3, label: "Pre-Flight OK", activeStage: "Pre-Flight Validation", desc: "DPI & Transparency check" }
+                            { num: 1, label: "Format Check", activeStage: "File Received", desc: "Source file mounted" },
+                            { num: 2, label: "Smart Conversion", activeStage: "Format Check & Processing", desc: "Running Inkscape CLI" },
+                            { num: 3, label: "Pre-Flight Validation", activeStage: "Pre-Flight Validation", desc: "DPI & Transparency check" }
                           ].map((s) => {
                             const isDone = conversionState === "completed" || 
                               (s.num === 1 && (conversionStage === "Format Check & Processing" || conversionStage === "Pre-Flight Validation" || conversionStage === "Done")) ||
@@ -814,11 +817,13 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
                                   {[
                                     { label: "DPI Export", val: `${preFlightDetails?.dpi} DPI`, success: true },
                                     { label: "Alpha Layer", val: preFlightDetails?.background, success: true },
-                                    { label: "Resolution", val: preFlightDetails?.resolution.split(" ")[0], success: true },
+                                    { label: "Design Size", val: preFlightDetails?.dimensionsCm || "Unknown", success: true },
                                     { label: "Original Size", val: preFlightDetails?.fileSize, success: true },
+                                    { label: "Resolution", val: preFlightDetails?.resolution?.split(" ")[0], success: true },
                                     { label: "Conversion Time", val: preFlightDetails?.conversionTime, success: true },
                                     { label: "Verification", val: "PASS", success: true },
                                     { label: "Accuracy", val: preFlightDetails?.accuracyScore, success: preFlightDetails?.accuracyScore === "100%" },
+                                    { label: "Applied Fonts", val: Array.isArray(preFlightDetails?.appliedFonts) && preFlightDetails.appliedFonts.length > 0 ? preFlightDetails.appliedFonts.join(", ") : "Vector Outlines Only", success: true },
                                     { label: "Font Status", val: preFlightDetails?.accuracyStatus, success: preFlightDetails?.accuracyScore === "100%" }
                                   ].map((b, i) => (
                                     <div key={i} className={`p-2.5 border rounded-xl ${b.success ? 'bg-slate-50 border-slate-200/60' : 'bg-amber-50 border-amber-200/60'} ${b.label === 'Font Status' ? 'col-span-2' : ''}`}>
@@ -840,7 +845,7 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
                                       <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
                                       <div>
                                         <p className="text-xs font-black text-amber-800 leading-snug">
-                                          the font you are using seems to be premium or piad font. please upload your font to get 100% accurate.
+                                          We detected premium or custom fonts in your design. Please upload the font files (.ttf, .otf) below to ensure 100% conversion accuracy.
                                         </p>
                                         <p className="text-[10px] text-amber-600 font-bold mt-1">
                                           Missing Fonts: <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-amber-200">{Array.isArray(preFlightDetails.missingFonts) ? preFlightDetails.missingFonts.join(", ") : preFlightDetails.missingFonts}</span>

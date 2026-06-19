@@ -28,17 +28,25 @@ export async function ensureFontInstalled(fontName: string): Promise<boolean> {
 
   try {
     // Step B: Dynamic Web API Query (Google Fonts CSS Scraper Fallback)
-    const cssUrl = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontName)}:wght@400;700&display=swap`
+    let fetchTarget = fontName
+    let cssUrl = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fetchTarget)}:wght@400;700&display=swap`
     
     // We send a specific legacy User-Agent to force Google Fonts to return raw TTF instead of WOFF2
-    const cssRes = await fetch(cssUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/534.59.10 (KHTML, like Gecko) Version/5.1.9 Safari/534.59.10'
-      }
+    let cssRes = await fetch(cssUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/534.59.10 (KHTML, like Gecko) Version/5.1.9 Safari/534.59.10' }
     })
     
+    // Fallback: If 400 Bad Request, CorelDraw might have appended "Regular" or "Bold" to the font name
+    if (!cssRes.ok && (fetchTarget.toLowerCase().includes(" regular") || fetchTarget.toLowerCase().includes(" bold"))) {
+      fetchTarget = fetchTarget.replace(/ Regular/i, "").replace(/ Bold/i, "")
+      cssUrl = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fetchTarget)}:wght@400;700&display=swap`
+      cssRes = await fetch(cssUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/534.59.10 (KHTML, like Gecko) Version/5.1.9 Safari/534.59.10' }
+      })
+    }
+
     if (!cssRes.ok) {
-      console.warn(`Font Automator: Google Fonts API returned ${cssRes.status} for [${fontName}]`)
+      console.warn(`Font Automator: Google Fonts API returned ${cssRes.status} for [${fontName}] (tried ${fetchTarget})`)
       return false
     }
 
