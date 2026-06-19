@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify } from "jose"
 import { cookies } from "next/headers"
 import "server-only"
 
-const secret = new TextEncoder().encode(process.env.AUTH_SECRET!)
+const secret = new TextEncoder().encode(process.env.AUTH_SECRET || "fallback_secret_for_development_only")
 const SESSION_COOKIE = "session"
 const EXPIRATION_TIME = 60 * 60 * 24 * 7
 
