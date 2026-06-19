@@ -164,7 +164,8 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
       const formData = new FormData()
       formData.append("file", file)
       
-      const res = await fetch("/api/upload-font", {
+      const workerUrl = process.env.NEXT_PUBLIC_LOCAL_WORKER_URL || ""
+      const res = await fetch(`${workerUrl}/api/upload-font`, {
         method: "POST",
         body: formData
       })
