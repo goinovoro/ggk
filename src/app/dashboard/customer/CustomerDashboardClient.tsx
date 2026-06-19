@@ -89,7 +89,13 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
   const [fontUploadError, setFontUploadError] = useState("")
   const [fontUploadSuccess, setFontUploadSuccess] = useState("")
   const fontFileInputRef = useRef<HTMLInputElement>(null)
-  
+  const receiptInputRef = useRef<HTMLInputElement>(null)
+
+  const handleReceiptChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setPaymentProofFile(e.target.files[0].name)
+    }
+  }
   // Calculate price dynamically: Rp 35,000/meter for Elite Premium DTF, Rp 25,000/meter for Standard Grade
   const pricePerMeter = dimensions === "Elite Premium DTF" 
     ? 35000 
@@ -878,24 +884,23 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
                         <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
                           Unggah Bukti Pembayaran
                         </label>
-                        <Button
-                          type="button"
-                          onClick={handleAddMockReceipt}
-                          size="sm"
-                          className="bg-primary hover:bg-secondary text-white font-black text-[9px] tracking-widest uppercase rounded-lg shadow-sm h-7 px-2"
-                        >
-                          Simulasikan Struk
-                        </Button>
                       </div>
                       
                       <div 
-                        onClick={handleAddMockReceipt}
+                        onClick={() => receiptInputRef.current?.click()}
                         className={`border-dashed border-2 rounded-2xl p-6 text-center cursor-pointer transition-all duration-300 shadow-inner flex flex-col items-center justify-center ${
                           paymentProofFile 
                             ? "bg-emerald-50/50 border-emerald-500/30" 
                             : "bg-slate-50/50 border-slate-200 hover:bg-slate-50 hover:border-primary/40"
                         }`}
                       >
+                        <input 
+                          type="file" 
+                          ref={receiptInputRef} 
+                          className="hidden" 
+                          accept=".png,.jpg,.jpeg,.pdf" 
+                          onChange={handleReceiptChange} 
+                        />
                         <div className={`p-2 rounded-full border shadow-sm mb-2 ${
                           paymentProofFile ? "bg-white border-emerald-100 text-emerald-500" : "bg-white border-slate-100 text-slate-400"
                         }`}>
