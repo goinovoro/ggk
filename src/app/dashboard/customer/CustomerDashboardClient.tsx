@@ -106,23 +106,6 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
   const activeOrders = orders.filter((o) => o.status !== "COMPLETED")
   const completedOrders = orders.filter((o) => o.status === "COMPLETED")
 
-  // Simulator helper: adds a mock design file (.cdr and .pdf formats)
-  const handleAddMockFile = () => {
-    const mockFiles = [
-      "LOGO_AYAM_LENGKUAS_VECTOR.cdr",
-      "SPANDUK_GIAT_GERAK_HIGHRES.cdr",
-      "KAOS_MERDEKA_BACKPRINT.pdf",
-      "STICKER_GGK_PRINT_ROLL.cdr"
-    ]
-    const randomFile = mockFiles[Math.floor(Math.random() * mockFiles.length)]
-    if (!designFiles.some(f => f.name === randomFile)) {
-      const mockFile = new File(["GGK vector binary mock data"], randomFile, {
-        type: randomFile.endsWith(".pdf") ? "application/pdf" : "application/cdr"
-      })
-      setDesignFiles([...designFiles, mockFile])
-    }
-  }
-
   // Trigger background Smart Conversion process
   const startSmartConversion = async (files: File[]) => {
     if (files.length === 0) return
@@ -133,8 +116,6 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
     setConversionError("")
     
     try {
-      // Small visual delay to represent stage 1
-      await new Promise((resolve) => setTimeout(resolve, 800))
       setConversionStage("Format Check & Processing")
       
       // Route request to the local worker tunnel if specified, otherwise hit relative /api/validate-file
@@ -156,7 +137,6 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
       }
       
       setConversionStage("Pre-Flight Validation")
-      await new Promise((resolve) => setTimeout(resolve, 700))
       
       setConversionPreview(data.previewUrl)
       setPreFlightDetails(data.preFlight)
@@ -219,11 +199,6 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
   // Simulator helper: deletes a design file
   const handleRemoveFile = (fileName: string) => {
     setDesignFiles(designFiles.filter((f) => f.name !== fileName))
-  }
-
-  // Simulator helper: uploads a mock transfer slip
-  const handleAddMockReceipt = () => {
-    setPaymentProofFile(`GGK_TRANSFER_SLIP_${Math.floor(1000 + Math.random() * 9000)}.png`)
   }
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
@@ -558,13 +533,6 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
                           <p className="text-xs text-slate-500 font-medium">Unggah file artwork DTF Anda untuk produksi plotter.</p>
                         </div>
                       </div>
-                      <Button
-                        onClick={handleAddMockFile}
-                        size="sm"
-                        className="bg-primary hover:bg-secondary text-white font-black text-[10px] tracking-widest uppercase rounded-lg shadow-sm"
-                      >
-                        Simulasikan Upload
-                      </Button>
                     </div>
 
                     {/* File Dropzone */}

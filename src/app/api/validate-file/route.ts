@@ -6,6 +6,7 @@ import { promisify } from "util"
 import { performance } from "perf_hooks"
 import { ensureFontInstalled } from "@/lib/fontAutomator"
 import AdmZip from "adm-zip"
+import sizeOf from "image-size"
 
 const execPromise = promisify(exec)
 
@@ -246,7 +247,7 @@ export async function POST(req: Request) {
     }
     const accuracyReport = { accuracyScore, status: accuracyStatus, missingFonts: failedFonts }
 
-    let outputPreviewUrl = "/smart_conversion_mockup.png" // Fallback preview url
+    let outputPreviewUrl = ""
     const inkscapePath = await getInkscapePath()
 
     try {
@@ -266,49 +267,43 @@ export async function POST(req: Request) {
         outputPreviewUrl = `data:image/png;base64,${base64Image}`
       }
     } catch (err) {
-      console.warn("Inkscape CLI not found or failed, using dynamic design preview. Detail:", err)
+      console.warn("Inkscape CLI failed:", err)
       
-      // Fallback A: If PDF, read the actual PDF file as base64 so it can be previewed directly
       if (fileExtension === ".pdf") {
         try {
           const pdfBuffer = await fs.readFile(inputFilePath)
           outputPreviewUrl = `data:application/pdf;base64,${pdfBuffer.toString("base64")}`
-          conversionSuccess = true // Mark as success so it saves this exact PDF file for download
+          conversionSuccess = true
         } catch (readErr) {
-          console.error("Failed to read PDF file for fallback preview:", readErr)
-        }
-      } 
-      // Fallback B: If CDR, check if the user uploaded an image/svg for mockup purposes
-      else if (fileExtension === ".cdr") {
-        const header = buffer.toString("utf8", 0, Math.min(buffer.length, 1024)).toLowerCase()
-        if (header.includes("<svg")) {
-          outputPreviewUrl = `data:image/svg+xml;base64,${buffer.toString("base64")}`
-          conversionSuccess = true
-        } else if (buffer.length > 4 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
-          outputPreviewUrl = `data:image/png;base64,${buffer.toString("base64")}`
-          conversionSuccess = true
-        } else if (buffer.length > 2 && buffer[0] === 0xFF && buffer[1] === 0xD8) {
-          outputPreviewUrl = `data:image/jpeg;base64,${buffer.toString("base64")}`
-          conversionSuccess = true
-        } else {
-          // If it's a real CDR (or unknown mock string), fallback to the provided static mockup design
-          outputPreviewUrl = "/smart_conversion_mockup.png"
-          conversionSuccess = true
+          console.error("Failed to read PDF file:", readErr)
         }
       }
     }
 
     const endTime = performance.now()
-    const durationSeconds = ((endTime - startTime) / 1000).toFixed(2)
+    const totalDurationSeconds = ((endTime - startTime) / 1000).toFixed(2)
 
-    // If it's too fast, enforce a small delay so progress state is visible
-    const elapsed = parseFloat(durationSeconds)
-    if (elapsed < 2.0) {
-      await new Promise((resolve) => setTimeout(resolve, Math.round((2.0 - elapsed) * 1000)))
+    // Calculate real dimensions
+    let finalWidth = 0
+    let finalHeight = 0
+    let finalResolution = "Unknown"
+    
+    try {
+      if (outputFilePath && conversionSuccess) {
+        const outBuffer = await fs.readFile(outputFilePath)
+        const dimensions = sizeOf(outBuffer as any)
+        finalWidth = dimensions.width || 0
+        finalHeight = dimensions.height || 0
+        finalResolution = `${finalWidth} x ${finalHeight} (sRGB)`
+      } else {
+        const dimensions = sizeOf(buffer as any)
+        finalWidth = dimensions.width || 0
+        finalHeight = dimensions.height || 0
+        finalResolution = `${finalWidth} x ${finalHeight} (sRGB)`
+      }
+    } catch (e) {
+      console.error("Failed to read image size:", e)
     }
-
-    const finalEndTime = performance.now()
-    const totalDurationSeconds = ((finalEndTime - startTime) / 1000).toFixed(2)
 
     return NextResponse.json({
       success: true,
@@ -317,7 +312,7 @@ export async function POST(req: Request) {
       preFlight: {
         valid: true,
         dpi: 300,
-        resolution: "6850 x 11811 (sRGB)",
+        resolution: finalResolution,
         dimensionsCm: "100cm x 58cm",
         background: "Transparent (0% alpha)",
         fileSize: `${fileSizeMB} MB`,

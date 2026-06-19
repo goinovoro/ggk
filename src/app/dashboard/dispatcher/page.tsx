@@ -19,15 +19,19 @@ export const metadata: Metadata = {
   description: "Sistem Manajemen Pengiriman Terpadu",
 };
 
-const MOCK_ORDERS = [
-  { id: "ORD-001", customer: "Budi Santoso", destination: "Jakarta Selatan", status: "PENDING", items: 3, weight: "1.5kg", date: "2024-03-30 10:20" },
-  { id: "ORD-002", customer: "Salsa Bila", destination: "Bandung Kota", status: "PACKED", items: 1, weight: "0.5kg", date: "2024-03-30 11:05" },
-  { id: "ORD-003", customer: "Anto Wijaya", destination: "Surabaya Timur", status: "DISPATCHED", items: 5, weight: "4.2kg", date: "2024-03-30 09:15" },
-  { id: "ORD-004", customer: "Mega Lestari", destination: "Medan Baru", status: "PENDING", items: 2, weight: "2.1kg", date: "2024-03-30 12:30" },
-];
+import prisma from "@/lib/db";
 
-export default function DispatcherDashboard() {
-  return (
+export default async function DispatcherDashboard() {
+  const dbOrders = await prisma.order.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 50
+  });
+
+  const activeOrdersCount = dbOrders.length;
+  const pendingCount = dbOrders.filter(o => o.status === "VERIFICATION" || o.status === "PRINTING" || o.status === "PACKING").length;
+  const dispatchedCount = dbOrders.filter(o => o.status === "DISPATCH").length;
+  const completedCount = dbOrders.filter(o => o.status === "COMPLETED").length;
+
     <div className="p-6 max-w-7xl mx-auto space-y-8 bg-slate-950 min-h-screen text-white">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -42,10 +46,10 @@ export default function DispatcherDashboard() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {[
-          { label: "Total Pesanan", value: "128", icon: <ClipboardList />, color: "bg-primary/20 text-primary border-primary/20" },
-          { label: "Menunggu", value: "12", icon: <Clock />, color: "bg-amber-500/20 text-amber-500 border-amber-500/20" },
-          { label: "Telah Dikirim", value: "85", icon: <CheckCircle2 />, color: "bg-emerald-500/20 text-emerald-500 border-emerald-500/20" },
-          { label: "Masalah", value: "3", icon: <AlertCircle />, color: "bg-rose-500/20 text-rose-500 border-rose-500/20" },
+          { label: "Total Pesanan", value: activeOrdersCount.toString(), icon: <ClipboardList />, color: "bg-primary/20 text-primary border-primary/20" },
+          { label: "Menunggu", value: pendingCount.toString(), icon: <Clock />, color: "bg-amber-500/20 text-amber-500 border-amber-500/20" },
+          { label: "Telah Dikirim", value: dispatchedCount.toString(), icon: <CheckCircle2 />, color: "bg-emerald-500/20 text-emerald-500 border-emerald-500/20" },
+          { label: "Selesai", value: completedCount.toString(), icon: <CheckCircle2 />, color: "bg-blue-500/20 text-blue-500 border-blue-500/20" },
         ].map((stat, i) => (
           <Card key={i} className="bg-white/5 border-white/10 backdrop-blur-xl">
             <CardContent className="p-6 flex items-center gap-4">
@@ -96,20 +100,21 @@ export default function DispatcherDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {MOCK_ORDERS.map((order) => (
+                {dbOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-white/[0.03] transition-colors group">
-                    <td className="px-8 py-5 font-black text-white">{order.id}</td>
+                    <td className="px-8 py-5 font-black text-white">{order.id.slice(0, 8).toUpperCase()}</td>
                     <td className="px-6 py-5">
-                       <div className="font-semibold text-slate-200">{order.customer}</div>
-                       <div className="text-[10px] text-slate-500">{order.date}</div>
+                       <div className="font-semibold text-slate-200">{order.customerName}</div>
+                       <div className="text-[10px] text-slate-500">{new Date(order.createdAt).toLocaleString("id-ID")}</div>
                     </td>
                     <td className="px-6 py-5 text-slate-400 font-medium">
                        {order.destination}
                     </td>
                     <td className="px-6 py-5 text-center">
                       <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
-                        order.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
-                        order.status === 'PACKED' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
+                        order.status === 'VERIFICATION' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
+                        order.status === 'PACKING' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
+                        order.status === 'PRINTING' ? 'bg-purple-500/10 text-purple-500 border border-purple-500/20' :
                         'bg-primary/10 text-primary border border-primary/20'
                       }`}>
                         {order.status}

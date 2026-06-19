@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import {
   getOrders,
   updateOrderStatus,
-  simulateIncomingOrder,
   clearAllSimulationData
 } from "@/actions/orders"
 import {
@@ -202,13 +201,6 @@ export default function OpsDashboardClient({ initialRole, userName }: OpsDashboa
     addLog("State reset completed.")
   }
 
-  const handleCreateMockOrder = async () => {
-    await simulateIncomingOrder()
-    const updated = await getOrders()
-    setOrders(updated)
-    addLog(`Incoming customer order simulated and saved to DB.`)
-  }
-
 
   const filteredOrders = orders.filter((o) => {
     const query = search.toLowerCase()
@@ -274,15 +266,6 @@ export default function OpsDashboardClient({ initialRole, userName }: OpsDashboa
           >
             <RefreshCw size={14} className="mr-2" /> Reset Mock Data
           </Button>
-          {hasPrivilege(["DISPATCHER", "ADMIN"]) && (
-            <Button
-              onClick={handleCreateMockOrder}
-              size="sm"
-              className="bg-primary hover:bg-secondary text-white font-black tracking-tight rounded-xl h-10 px-5 transition-all text-xs shadow-lg shadow-primary/15 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <Plus size={14} className="mr-2" /> Simulasikan Order Masuk
-            </Button>
-          )}
         </div>
       </div>
 
