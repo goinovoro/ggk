@@ -45,31 +45,37 @@ export async function login(prevState: { error?: string }, formData: FormData) {
 
   if (!email || !password) return { error: "Email dan password wajib diisi" }
 
-  const user = await prisma.user.findUnique({ where: { email } })
-  if (!user) return { error: "Email atau password salah" }
+  try {
+    const user = await prisma.user.findUnique({ where: { email } })
+    if (!user) return { error: "Email atau password salah" }
 
-  const valid = await compare(password, user.password)
-  if (!valid) return { error: "Email atau password salah" }
+    const valid = await compare(password, user.password)
+    if (!valid) return { error: "Email atau password salah" }
 
-  await createSession({
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role,
-  })
+    await createSession({
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    })
 
-  if (redirectTo && redirectTo.startsWith("/dashboard")) {
-    redirect(redirectTo)
+    if (redirectTo && redirectTo.startsWith("/dashboard")) {
+      redirect(redirectTo)
+    }
+
+    const roleRoutes: Record<string, string> = {
+      ADMIN: "/dashboard/ops",
+      DISPATCHER: "/dashboard/ops",
+      PACKER: "/dashboard/ops",
+      CUSTOMER: "/dashboard/customer",
+      OPERATOR: "/dashboard/ops",
+    }
+    redirect(roleRoutes[user.role] || "/dashboard/customer")
+  } catch (err: any) {
+    if (err.message === "NEXT_REDIRECT") throw err;
+    console.error("Login error:", err)
+    return { error: `System Error: ${err.message}` }
   }
-
-  const roleRoutes: Record<string, string> = {
-    ADMIN: "/dashboard/ops",
-    DISPATCHER: "/dashboard/ops",
-    PACKER: "/dashboard/ops",
-    CUSTOMER: "/dashboard/customer",
-    OPERATOR: "/dashboard/ops",
-  }
-  redirect(roleRoutes[user.role] || "/dashboard/customer")
 }
 
 export async function logout() {
