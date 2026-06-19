@@ -11,6 +11,16 @@ const FONT_DIR = isWindows
   ? path.join(process.cwd(), '.fonts') 
   : '/usr/share/fonts/truetype/custom/'
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, Bypass-Tunnel-Reminder, ngrok-skip-browser-warning",
+}
+
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders })
+}
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData()
@@ -19,7 +29,7 @@ export async function POST(req: Request) {
     if (!file) {
       return NextResponse.json(
         { error: true, message: "No font file uploaded" },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       )
     }
 
@@ -30,7 +40,7 @@ export async function POST(req: Request) {
     if (!['.ttf', '.otf', '.woff', '.woff2'].includes(ext)) {
       return NextResponse.json(
         { error: true, message: "Invalid font format. Please upload .ttf, .otf, .woff, or .woff2" },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       )
     }
 
@@ -60,12 +70,12 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       message: `Font ${filename} uploaded and installed successfully.`
-    })
+    }, { headers: corsHeaders })
   } catch (error: any) {
     console.error("Font upload error:", error)
     return NextResponse.json(
       { error: true, message: error.message || "An unexpected error occurred uploading the font" },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     )
   }
 }
