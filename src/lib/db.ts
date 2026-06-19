@@ -4,7 +4,7 @@ import { Pool } from "pg"
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined }
 
-const connectionString = process.env.DATABASE_URL || ""
+const connectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL || ""
 const finalConnectionString = connectionString.includes("6543") && !connectionString.includes("pgbouncer=true")
   ? `${connectionString}${connectionString.includes("?") ? "&" : "?"}pgbouncer=true`
   : connectionString
