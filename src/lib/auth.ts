@@ -2,7 +2,6 @@ import { SignJWT, jwtVerify } from "jose"
 import { cookies } from "next/headers"
 import "server-only"
 
-const secret = new TextEncoder().encode(process.env.AUTH_SECRET!)
 const SESSION_COOKIE = "session"
 const EXPIRATION_TIME = 60 * 60 * 24 * 7
 
@@ -13,12 +12,18 @@ export type SessionPayload = {
   role: "ADMIN" | "DISPATCHER" | "PACKER" | "OPERATOR" | "CUSTOMER"
 }
 
+function getSecret(): Uint8Array {
+  const secret = process.env.AUTH_SECRET
+  if (!secret) throw new Error("AUTH_SECRET environment variable is not set")
+  return new TextEncoder().encode(secret)
+}
+
 export async function createSession(payload: SessionPayload) {
   const token = await new SignJWT(payload as unknown as Record<string, unknown>)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${EXPIRATION_TIME}s`)
-    .sign(secret)
+    .sign(getSecret())
 
   const cookieStore = await cookies()
   cookieStore.set(SESSION_COOKIE, token, {
@@ -36,7 +41,7 @@ export async function verifySession(): Promise<SessionPayload | null> {
   if (!cookie) return null
 
   try {
-    const { payload } = await jwtVerify(cookie.value, secret)
+    const { payload } = await jwtVerify(cookie.value, getSecret())
     return payload as unknown as SessionPayload
   } catch {
     return null
