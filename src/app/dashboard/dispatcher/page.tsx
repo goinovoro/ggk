@@ -32,6 +32,7 @@ export default async function DispatcherDashboard() {
   const dispatchedCount = dbOrders.filter(o => o.status === "DISPATCH").length;
   const completedCount = dbOrders.filter(o => o.status === "COMPLETED").length;
 
+  return (
     <div className="p-6 max-w-7xl mx-auto space-y-8 bg-slate-950 min-h-screen text-white">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
