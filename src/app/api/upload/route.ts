@@ -1,0 +1,75 @@
+import { NextResponse } from 'next/server';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
+export async function POST(request: Request) {
+  try {
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+    const type = formData.get('type') as string; // 'design' or 'payment'
+
+    if (!file) {
+      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    
+    // Ensure uploads directory exists
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+    try {
+      await fs.access(uploadsDir);
+    } catch {
+      await fs.mkdir(uploadsDir, { recursive: true });
+    }
+
+    // Sanitize filename
+    const ext = path.extname(file.name);
+    const base = path.basename(file.name, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const timestamp = Date.now();
+    const safeName = `${base}_${timestamp}${ext}`;
+    const filePath = path.join(uploadsDir, safeName);
+    const publicUrl = `/uploads/${safeName}`;
+
+    await fs.writeFile(filePath, buffer);
+
+    // If it's a CDR file, convert it
+    if (ext.toLowerCase() === '.cdr') {
+      const convertedName = `${base}_${timestamp}_converted.png`;
+      const convertedPath = path.join(uploadsDir, convertedName);
+      const convertedUrl = `/uploads/${convertedName}`;
+
+      try {
+        // Run inkscape CLI
+        const cmd = `"${path.join('C:', 'Program Files', 'Inkscape', 'bin', 'inkscape.com')}" --export-filename="${convertedPath}" "${filePath}"`;
+        await execAsync(cmd);
+        
+        // Get file size
+        const stats = await fs.stat(convertedPath);
+        const fileSizeMb = (stats.size / (1024 * 1024)).toFixed(2);
+
+        return NextResponse.json({
+          originalUrl: publicUrl,
+          convertedUrl: convertedUrl,
+          fileSizeMb: Number(fileSizeMb),
+          success: true
+        });
+      } catch (convErr: any) {
+        console.error("Conversion error:", convErr);
+        return NextResponse.json({ error: `Conversion failed: ${convErr.message}` }, { status: 500 });
+      }
+    }
+
+    return NextResponse.json({
+      originalUrl: publicUrl,
+      success: true
+    });
+
+  } catch (error: any) {
+    console.error("Upload Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

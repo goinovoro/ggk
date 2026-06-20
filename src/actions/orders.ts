@@ -22,6 +22,9 @@ export interface DbOrder {
   driver: string
   printing: boolean
   createdAt: Date
+  originalFileUrl?: string | null
+  convertedFileUrl?: string | null
+  paymentProofUrl?: string | null
 }
 
 // Convert DB Order representation to Frontend interface format
@@ -42,6 +45,9 @@ function mapToFrontendOrder(o: any) {
     progress: o.progress,
     driver: o.driver,
     printing: o.printing,
+    originalFileUrl: o.originalFileUrl,
+    convertedFileUrl: o.convertedFileUrl,
+    paymentProofUrl: o.paymentProofUrl,
     validation: o.validation ? {
       id: o.validation.id,
       fileSizeMb: o.validation.fileSizeMb,
@@ -82,6 +88,9 @@ export async function createOrder(data: {
   price: string
   items: string[]
   missingFonts?: string[]
+  originalFileUrl?: string
+  convertedFileUrl?: string
+  paymentProofUrl?: string
 }) {
   try {
   const count = await prisma.order.count()
@@ -133,6 +142,9 @@ export async function createOrder(data: {
       progress: 0,
       driver: "",
       printing: false,
+      originalFileUrl: data.originalFileUrl || null,
+      convertedFileUrl: data.convertedFileUrl || null,
+      paymentProofUrl: data.paymentProofUrl || null,
       validation: {
         create: {
           fileSizeMb: parseFloat((0.5 + Math.random() * 20).toFixed(2)),

@@ -408,7 +408,7 @@ export default function OpsDashboardClient({ initialRole, userName }: OpsDashboa
                              <Button onClick={() => setViewingBuktiFor(order.id)} variant="outline" size="icon" className="w-6 h-6 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 border-slate-200">
                                <Eye size={12} />
                              </Button>
-                             <Button onClick={() => handleDownloadMock(`Bukti_Transfer_${order.id}.png`)} variant="outline" size="icon" className="w-6 h-6 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 border-slate-200" title="Download Bukti">
+                             <Button onClick={() => order.paymentProofUrl ? window.open(order.paymentProofUrl, '_blank') : handleDownloadMock(`Bukti_Transfer_${order.id}.png`)} variant="outline" size="icon" className="w-6 h-6 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 border-slate-200" title="Download Bukti">
                                <Download size={12} />
                              </Button>
                           </div>
@@ -425,7 +425,7 @@ export default function OpsDashboardClient({ initialRole, userName }: OpsDashboa
                             </div>
                           </div>
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                             <Button onClick={() => handleDownloadMock(`${order.designName.replace(/\.[^/.]+$/, "")}_Converted.png`)} variant="outline" size="icon" className="w-6 h-6 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 border-slate-200" title="Download Print File">
+                             <Button onClick={() => order.convertedFileUrl ? window.open(order.convertedFileUrl, '_blank') : handleDownloadMock(`${order.designName.replace(/\.[^/.]+$/, "")}_Converted.png`)} variant="outline" size="icon" className="w-6 h-6 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 border-slate-200" title="Download Print File">
                                <Download size={12} />
                              </Button>
                           </div>
@@ -787,20 +787,29 @@ export default function OpsDashboardClient({ initialRole, userName }: OpsDashboa
           <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-md w-full border border-slate-200 relative">
             <button 
               onClick={() => setViewingBuktiFor(null)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-rose-100 hover:text-rose-600 transition-colors"
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-rose-100 hover:text-rose-600 transition-colors z-20"
             >
               <AlertCircle size={16} className="rotate-45" />
             </button>
             <h3 className="text-xl font-black text-neutral-dark mb-4">Bukti Transfer</h3>
             <div className="w-full aspect-[3/4] bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden relative flex flex-col items-center justify-center">
               <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-400 to-transparent pointer-events-none"></div>
-              <ImageIcon size={64} className="text-slate-300 mb-4" />
-              <p className="text-slate-400 font-bold text-sm">Pratinjau Struk Pembayaran</p>
-              <p className="text-slate-300 font-mono text-xs mt-2">Order: {viewingBuktiFor}</p>
+              {orders.find(o => o.id === viewingBuktiFor)?.paymentProofUrl ? (
+                <img src={orders.find(o => o.id === viewingBuktiFor)?.paymentProofUrl} alt="Bukti Transfer" className="w-full h-full object-contain relative z-10 bg-black/5" />
+              ) : (
+                <>
+                  <ImageIcon size={64} className="text-slate-300 mb-4" />
+                  <p className="text-slate-400 font-bold text-sm">Pratinjau Struk Pembayaran</p>
+                  <p className="text-slate-300 font-mono text-xs mt-2">Order: {viewingBuktiFor}</p>
+                </>
+              )}
             </div>
             <div className="mt-6 flex gap-3">
               <Button onClick={() => setViewingBuktiFor(null)} variant="outline" className="flex-1 rounded-xl font-black">Tutup</Button>
-              <Button onClick={() => handleDownloadMock(`Bukti_Transfer_${viewingBuktiFor}.png`)} className="flex-1 rounded-xl bg-primary hover:bg-secondary text-white font-black">
+              <Button onClick={() => {
+                const order = orders.find(o => o.id === viewingBuktiFor)
+                order?.paymentProofUrl ? window.open(order.paymentProofUrl, '_blank') : handleDownloadMock(`Bukti_Transfer_${viewingBuktiFor}.png`)
+              }} className="flex-1 rounded-xl bg-primary hover:bg-secondary text-white font-black">
                 <Download size={16} className="mr-2" /> Download
               </Button>
             </div>

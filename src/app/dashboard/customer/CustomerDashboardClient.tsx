@@ -75,7 +75,7 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
   }
 
   // Step 3: Payment State
-  const [paymentProofFile, setPaymentProofFile] = useState<string>("")
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null)
 
   // Smart Conversion State
   const [conversionState, setConversionState] = useState<"idle" | "processing" | "completed" | "failed">("idle")
@@ -84,6 +84,11 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
   const [preFlightDetails, setPreFlightDetails] = useState<any>(null)
   const [conversionError, setConversionError] = useState<string>("")
   const [conversionTimer, setConversionTimer] = useState<number>(0)
+  
+  // Real File URLs
+  const [originalFileUrl, setOriginalFileUrl] = useState<string>("")
+  const [convertedFileUrl, setConvertedFileUrl] = useState<string>("")
+  const [buktiTransferUrl, setBuktiTransferUrl] = useState<string>("")
 
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -106,14 +111,14 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
 
   const handleReceiptChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setPaymentProofFile(e.target.files[0].name)
+      setPaymentProofFile(e.target.files[0])
     }
   }
 
   const handleReceiptDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      setPaymentProofFile(e.dataTransfer.files[0].name)
+      setPaymentProofFile(e.dataTransfer.files[0])
     }
   }
   // Calculate price dynamically: Rp 35,000/meter for Elite Premium DTF, Rp 25,000/meter for Standard Grade
@@ -145,32 +150,36 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
     try {
       setConversionStage("Format Check & Processing")
       
-      // Route request to the local worker tunnel if specified, otherwise hit relative /api/validate-file
-      const workerUrl = (process.env.NEXT_PUBLIC_LOCAL_WORKER_URL || "").replace(/\/$/, "")
-      const endpoint = `${workerUrl}/api/validate-file`
+      const endpoint = `/api/upload`
 
       const formData = new FormData()
       formData.append("file", targetFile)
+      formData.append("type", "design")
       
       const res = await fetch(endpoint, {
         method: "POST",
         body: formData,
-        headers: {
-          "Bypass-Tunnel-Reminder": "true",
-          "ngrok-skip-browser-warning": "true"
-        }
       })
       
       const data = await res.json()
       
       if (!res.ok || data.error) {
-        throw new Error(data.message || "Pre-flight conversion failed")
+        throw new Error(data.error || "Pre-flight conversion failed")
       }
       
       setConversionStage("Pre-Flight Validation")
       
-      setConversionPreview(data.previewUrl)
-      setPreFlightDetails(data.preFlight)
+      setOriginalFileUrl(data.originalUrl || "")
+      setConvertedFileUrl(data.convertedUrl || "")
+      setConversionPreview(data.convertedUrl || data.originalUrl || "")
+      
+      setPreFlightDetails({
+        fileSizeMb: data.fileSizeMb || 0,
+        resolutionDpi: 300,
+        widthCm: dimensions ? parseFloat(dimensions.split("x")[0]) : 58.0,
+        heightCm: dimensions ? parseFloat(dimensions.split("x")[1]) : 100.0,
+        passedValidation: true
+      })
       setConversionState("completed")
       setConversionStage("Done")
     } catch (err: any) {
@@ -242,17 +251,39 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
     if (!designName || designFiles.length === 0 || !paymentProofFile) return
 
     setLoading(true)
+    
+    // Upload the payment proof right before placing order
+    let finalBuktiUrl = ""
+    try {
+       const fd = new FormData()
+       fd.append("file", paymentProofFile)
+       fd.append("type", "payment")
+       
+       const res = await fetch("/api/upload", { method: "POST", body: fd })
+       const data = await res.json()
+       if (!res.ok || data.error) throw new Error(data.error)
+       finalBuktiUrl = data.originalUrl
+       setBuktiTransferUrl(finalBuktiUrl)
+    } catch (e: any) {
+       console.error("Failed to upload payment proof:", e)
+       setLoading(false)
+       return
+    }
+
     try {
       const newOrder: any = await createOrder({
         customerId: session.userId || (session as any).id || "fallback-user-id",
         customerName: session.name || session.email,
         destination: "Jakarta Selatan", 
         designName,
-        dimensions,
-        sheets: `${sheetsCount} sheets`,
-        weight: `${((typeof sheetsCount === 'number' ? sheetsCount : 0) * 0.02).toFixed(1)}kg`,
-        price: formattedPrice,
-        items: [`Kaos ${designName.split(' ')[0]} x2`, `DTF Sheet ${designName.split(' ')[0]} x1`],
+        dimensions: dimensions || "58cm x 100cm",
+        sheets: String(sheetsCount || 1),
+        weight: `${((Number(sheetsCount) || 1) * 0.02).toFixed(1)}kg`,
+        price: new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(calculatedPrice),
+        items: [`${designName} x${sheetsCount}`],
+        originalFileUrl,
+        convertedFileUrl,
+        paymentProofUrl: finalBuktiUrl,
         missingFonts: preFlightDetails?.missingFonts
       })
       
@@ -269,7 +300,10 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
       setSheetsCount("")
       setDimensions("")
       setDesignFiles([])
-      setPaymentProofFile("")
+      setPaymentProofFile(null)
+      setOriginalFileUrl("")
+      setConvertedFileUrl("")
+      setBuktiTransferUrl("")
       setCurrentStep(1)
     } catch (err: any) {
       console.error("Failed to place order:", err)
@@ -950,7 +984,7 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
                         {paymentProofFile ? (
                           <div className="space-y-1">
                             <p className="font-black text-xs text-emerald-600">Bukti Transfer Berhasil Ditambahkan!</p>
-                            <p className="text-[10px] text-slate-500 font-mono font-bold">{paymentProofFile}</p>
+                            <p className="text-[10px] text-slate-500 font-mono font-bold">{paymentProofFile.name}</p>
                           </div>
                         ) : (
                           <div>

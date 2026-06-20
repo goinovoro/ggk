@@ -77,6 +77,12 @@ model Order {
   items         OrderItem[]
   paymentProof  PaymentProof?
   validation    OrderValidation?
+  
+  // Real file uploads
+  originalFileUrl  String?
+  convertedFileUrl String?
+  paymentProofUrl  String?
+  
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 }
