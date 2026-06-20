@@ -245,8 +245,9 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
       setDesignFiles([])
       setPaymentProofFile("")
       setCurrentStep(1)
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to place order:", err)
+      alert("Failed to place order: " + (err.message || String(err)))
     } finally {
       setLoading(false)
     }
