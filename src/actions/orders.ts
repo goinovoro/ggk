@@ -90,18 +90,29 @@ export async function createOrder(data: {
   const widthCm = 57.5
   const heightCm = parseFloat((sheetsNum * 100).toFixed(1))
 
+  const checkAndGetFallback = async () => {
+    let existing = await prisma.user.findFirst({ where: { role: "CUSTOMER" } })
+    if (!existing) {
+      existing = await prisma.user.create({
+        data: {
+          email: "fallback" + Date.now() + "@example.com",
+          name: "Default Customer",
+          password: "none",
+          role: "CUSTOMER"
+        }
+      })
+    }
+    return existing.id
+  }
+
   let validCustomerId = data.customerId
   if (validCustomerId === "fallback-user-id" || !validCustomerId) {
-    const existing = await prisma.user.findFirst({ where: { role: "CUSTOMER" } })
-    if (existing) {
-      validCustomerId = existing.id
-    }
+    validCustomerId = await checkAndGetFallback()
   } else {
     // verify it exists to prevent FK violation
     const customer = await prisma.user.findUnique({ where: { id: validCustomerId } })
     if (!customer) {
-      const existing = await prisma.user.findFirst({ where: { role: "CUSTOMER" } })
-      if (existing) validCustomerId = existing.id
+      validCustomerId = await checkAndGetFallback()
     }
   }
 
