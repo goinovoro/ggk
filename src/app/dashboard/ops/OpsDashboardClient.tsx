@@ -124,7 +124,7 @@ export default function OpsDashboardClient({ initialRole, userName }: OpsDashboa
 
   // Handlers
   const handleVerify = async (orderId: string) => {
-    if (!hasPrivilege(["DISPATCHER"])) return
+    if (!hasPrivilege(["OPERATOR"])) return
     await updateOrderStatus(orderId, { status: "PRINTING", progress: 0 })
     const updated = await getOrders()
     setOrders(updated)
@@ -365,7 +365,7 @@ export default function OpsDashboardClient({ initialRole, userName }: OpsDashboa
                       </div>
 
                       {/* Action Trigger */}
-                      {hasPrivilege(["DISPATCHER"]) ? (
+                      {hasPrivilege(["OPERATOR"]) ? (
                         <Button
                           onClick={() => handleVerify(order.id)}
                           className="w-full h-9 text-xs font-black bg-amber-500 hover:bg-amber-600 text-slate-950 uppercase tracking-tight rounded-xl shadow-md active:scale-95 transition-all"
@@ -374,7 +374,7 @@ export default function OpsDashboardClient({ initialRole, userName }: OpsDashboa
                         </Button>
                       ) : (
                         <div className="flex items-center justify-center gap-2 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 text-[10px] font-black">
-                          <Lock size={12} /> Requires Dispatcher
+                          <Lock size={12} /> Requires Operator
                         </div>
                       )}
                     </CardContent>
