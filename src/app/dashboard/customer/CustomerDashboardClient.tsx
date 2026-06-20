@@ -232,8 +232,7 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
         weight: `${((typeof sheetsCount === 'number' ? sheetsCount : 0) * 0.02).toFixed(1)}kg`,
         price: formattedPrice,
         items: [`Kaos ${designName.split(' ')[0]} x2`, `DTF Sheet ${designName.split(' ')[0]} x1`],
-        missingFonts: preFlightDetails?.missingFonts,
-        previewUrl: conversionPreview
+        missingFonts: preFlightDetails?.missingFonts
       })
       
       if (newOrder && newOrder.error) {

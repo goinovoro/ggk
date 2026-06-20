@@ -82,7 +82,6 @@ export async function createOrder(data: {
   price: string
   items: string[]
   missingFonts?: string[]
-  previewUrl?: string
 }) {
   try {
   const count = await prisma.order.count()
@@ -127,19 +126,7 @@ export async function createOrder(data: {
     }
   })
 
-  // Save the converted file preview on the server for operator terminal downloads
-  if (data.previewUrl && data.previewUrl.startsWith("data:image/png;base64,")) {
-    const base64Data = data.previewUrl.replace(/^data:image\/png;base64,/, "")
-    const uploadDir = path.join(process.cwd(), "public", "converted")
-    try {
-      await fs.mkdir(uploadDir, { recursive: true })
-      const filePath = path.join(uploadDir, `${orderId}.png`)
-      await fs.writeFile(filePath, Buffer.from(base64Data, "base64"))
-      console.log(`Saved converted file for ${orderId} to ${filePath}`)
-    } catch (err) {
-      console.error("Failed to save converted file:", err)
-    }
-  }
+
 
   revalidatePath("/dashboard/ops")
   revalidatePath("/dashboard/customer")
