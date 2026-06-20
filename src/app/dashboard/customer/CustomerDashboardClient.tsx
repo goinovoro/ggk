@@ -109,6 +109,13 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
       setPaymentProofFile(e.target.files[0].name)
     }
   }
+
+  const handleReceiptDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setPaymentProofFile(e.dataTransfer.files[0].name)
+    }
+  }
   // Calculate price dynamically: Rp 35,000/meter for Elite Premium DTF, Rp 25,000/meter for Standard Grade
   const pricePerMeter = dimensions === "Elite Premium DTF" 
     ? 35000 
@@ -920,6 +927,8 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
                       
                       <div 
                         onClick={() => receiptInputRef.current?.click()}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={handleReceiptDrop}
                         className={`border-dashed border-2 rounded-2xl p-6 text-center cursor-pointer transition-all duration-300 shadow-inner flex flex-col items-center justify-center ${
                           paymentProofFile 
                             ? "bg-emerald-50/50 border-emerald-500/30" 
@@ -945,7 +954,7 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
                           </div>
                         ) : (
                           <div>
-                            <p className="font-bold text-xs text-neutral-dark">Klik untuk Pilih Struk Transfer</p>
+                            <p className="font-bold text-xs text-neutral-dark">Klik atau Drop Struk Transfer</p>
                             <p className="text-[9px] text-slate-400 uppercase tracking-widest mt-1">Mendukung: JPG, PNG, PDF (Maks. 5MB)</p>
                           </div>
                         )}
