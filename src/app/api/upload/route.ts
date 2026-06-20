@@ -50,7 +50,7 @@ export async function POST(request: Request) {
         // Run inkscape CLI to get SVG for font extraction
         const svgName = `${base}_${timestamp}.svg`;
         const svgPath = path.join(uploadsDir, svgName);
-        const fontCmd = `"${path.join('C:', 'Program Files', 'Inkscape', 'bin', 'inkscape.com')}" --export-plain-svg="${svgPath}" "${filePath}"`;
+        const fontCmd = `"${path.join('C:', 'Program Files', 'Inkscape', 'bin', 'inkscape.com')}" --export-filename="${svgPath}" "${filePath}"`;
         let appliedFonts: string[] = [];
         try {
           await execAsync(fontCmd);
