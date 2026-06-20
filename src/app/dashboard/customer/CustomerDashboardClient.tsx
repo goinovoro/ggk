@@ -150,7 +150,8 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
     try {
       setConversionStage("Format Check & Processing")
       
-      const endpoint = `/api/upload`
+      const workerUrl = (process.env.NEXT_PUBLIC_LOCAL_WORKER_URL || "").replace(/\/$/, "")
+      const endpoint = `${workerUrl}/api/upload`
 
       const formData = new FormData()
       formData.append("file", targetFile)
@@ -159,6 +160,10 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
       const res = await fetch(endpoint, {
         method: "POST",
         body: formData,
+        headers: {
+          "Bypass-Tunnel-Reminder": "true",
+          "ngrok-skip-browser-warning": "true"
+        }
       })
       
       const data = await res.json()
@@ -169,9 +174,9 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
       
       setConversionStage("Pre-Flight Validation")
       
-      setOriginalFileUrl(data.originalUrl || "")
-      setConvertedFileUrl(data.convertedUrl || "")
-      setConversionPreview(data.convertedUrl || data.originalUrl || "")
+      setOriginalFileUrl(data.originalUrl ? `${workerUrl}${data.originalUrl}` : "")
+      setConvertedFileUrl(data.convertedUrl ? `${workerUrl}${data.convertedUrl}` : "")
+      setConversionPreview(data.convertedUrl ? `${workerUrl}${data.convertedUrl}` : data.originalUrl ? `${workerUrl}${data.originalUrl}` : "")
       
       setPreFlightDetails({
         fileSizeMb: data.fileSizeMb || 0,
@@ -259,10 +264,18 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
        fd.append("file", paymentProofFile)
        fd.append("type", "payment")
        
-       const res = await fetch("/api/upload", { method: "POST", body: fd })
+       const workerUrl = (process.env.NEXT_PUBLIC_LOCAL_WORKER_URL || "").replace(/\/$/, "")
+       const res = await fetch(`${workerUrl}/api/upload`, { 
+         method: "POST", 
+         body: fd,
+         headers: {
+           "Bypass-Tunnel-Reminder": "true",
+           "ngrok-skip-browser-warning": "true"
+         }
+       })
        const data = await res.json()
        if (!res.ok || data.error) throw new Error(data.error)
-       finalBuktiUrl = data.originalUrl
+       finalBuktiUrl = data.originalUrl ? `${workerUrl}${data.originalUrl}` : ""
        setBuktiTransferUrl(finalBuktiUrl)
     } catch (e: any) {
        console.error("Failed to upload payment proof:", e)

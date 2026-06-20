@@ -56,20 +56,35 @@ export async function POST(request: Request) {
           convertedUrl: convertedUrl,
           fileSizeMb: Number(fileSizeMb),
           success: true
-        });
+        }, { headers: getCorsHeaders() });
       } catch (convErr: any) {
         console.error("Conversion error:", convErr);
-        return NextResponse.json({ error: `Conversion failed: ${convErr.message}` }, { status: 500 });
+        return NextResponse.json({ error: `Conversion failed: ${convErr.message}` }, { status: 500, headers: getCorsHeaders() });
       }
     }
 
     return NextResponse.json({
       originalUrl: publicUrl,
       success: true
-    });
+    }, { headers: getCorsHeaders() });
 
   } catch (error: any) {
     console.error("Upload Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500, headers: getCorsHeaders() });
   }
+}
+
+function getCorsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, Bypass-Tunnel-Reminder, ngrok-skip-browser-warning",
+  };
+}
+
+export async function OPTIONS(request: Request) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: getCorsHeaders(),
+  });
 }
