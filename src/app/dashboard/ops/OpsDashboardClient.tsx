@@ -61,12 +61,18 @@ const INITIAL_ORDERS: Order[] = []
 export default function OpsDashboardClient({ initialRole, userName }: OpsDashboardClientProps) {
   const [currentRole, setCurrentRole] = useState<Role>(initialRole)
   const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS)
+  const [mounted, setMounted] = useState(false)
+  const [viewingBuktiFor, setViewingBuktiFor] = useState<string | null>(null)
   const [logs, setLogs] = useState<string[]>([
     `[08:28:00] Sistem initialized. Logged in as ${userName} (${initialRole})`,
     `[08:28:05] Database loaded. Syncing live database order data.`
   ])
   const [search, setSearch] = useState("")
   const [driverSelects, setDriverSelects] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Add simulated log entries
   const addLog = (message: string) => {
@@ -205,6 +211,30 @@ export default function OpsDashboardClient({ initialRole, userName }: OpsDashboa
     addLog("State reset completed.")
   }
 
+  const handleDownloadMock = (filename: string) => {
+    const canvas = document.createElement("canvas")
+    canvas.width = 800
+    canvas.height = 600
+    const ctx = canvas.getContext("2d")
+    if (ctx) {
+      ctx.fillStyle = "#f8fafc"
+      ctx.fillRect(0, 0, 800, 600)
+      ctx.fillStyle = "#94a3b8"
+      ctx.font = "bold 32px sans-serif"
+      ctx.textAlign = "center"
+      ctx.textBaseline = "middle"
+      ctx.fillText(filename, 400, 300)
+    }
+    const dataUrl = canvas.toDataURL("image/png")
+    const a = document.createElement("a")
+    a.href = dataUrl
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  }
+
+  if (!mounted) return null
 
   const filteredOrders = orders.filter((o) => {
     const query = search.toLowerCase()
@@ -375,10 +405,10 @@ export default function OpsDashboardClient({ initialRole, userName }: OpsDashboa
                             </div>
                           </div>
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                             <Button variant="outline" size="icon" className="w-6 h-6 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 border-slate-200">
+                             <Button onClick={() => setViewingBuktiFor(order.id)} variant="outline" size="icon" className="w-6 h-6 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 border-slate-200">
                                <Eye size={12} />
                              </Button>
-                             <Button variant="outline" size="icon" className="w-6 h-6 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 border-slate-200" title="Download Bukti">
+                             <Button onClick={() => handleDownloadMock(`Bukti_Transfer_${order.id}.png`)} variant="outline" size="icon" className="w-6 h-6 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 border-slate-200" title="Download Bukti">
                                <Download size={12} />
                              </Button>
                           </div>
@@ -395,7 +425,7 @@ export default function OpsDashboardClient({ initialRole, userName }: OpsDashboa
                             </div>
                           </div>
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                             <Button variant="outline" size="icon" className="w-6 h-6 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 border-slate-200" title="Download Print File">
+                             <Button onClick={() => handleDownloadMock(`${order.designName.replace(/\.[^/.]+$/, "")}_Converted.png`)} variant="outline" size="icon" className="w-6 h-6 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 border-slate-200" title="Download Print File">
                                <Download size={12} />
                              </Button>
                           </div>
@@ -751,5 +781,31 @@ export default function OpsDashboardClient({ initialRole, userName }: OpsDashboa
       </Card>
 
     </div>
+      {/* Bukti Transfer Viewer Modal */}
+      {viewingBuktiFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-md w-full border border-slate-200 relative">
+            <button 
+              onClick={() => setViewingBuktiFor(null)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-rose-100 hover:text-rose-600 transition-colors"
+            >
+              <AlertCircle size={16} className="rotate-45" />
+            </button>
+            <h3 className="text-xl font-black text-neutral-dark mb-4">Bukti Transfer</h3>
+            <div className="w-full aspect-[3/4] bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden relative flex flex-col items-center justify-center">
+              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-400 to-transparent pointer-events-none"></div>
+              <ImageIcon size={64} className="text-slate-300 mb-4" />
+              <p className="text-slate-400 font-bold text-sm">Pratinjau Struk Pembayaran</p>
+              <p className="text-slate-300 font-mono text-xs mt-2">Order: {viewingBuktiFor}</p>
+            </div>
+            <div className="mt-6 flex gap-3">
+              <Button onClick={() => setViewingBuktiFor(null)} variant="outline" className="flex-1 rounded-xl font-black">Tutup</Button>
+              <Button onClick={() => handleDownloadMock(`Bukti_Transfer_${viewingBuktiFor}.png`)} className="flex-1 rounded-xl bg-primary hover:bg-secondary text-white font-black">
+                <Download size={16} className="mr-2" /> Download
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
   )
 }
