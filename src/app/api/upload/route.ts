@@ -43,10 +43,32 @@ export async function POST(request: Request) {
       const convertedUrl = `/uploads/${convertedName}`;
 
       try {
-        // Run inkscape CLI
+        // Run inkscape CLI to get PNG
         const cmd = `"${path.join('C:', 'Program Files', 'Inkscape', 'bin', 'inkscape.com')}" --export-filename="${convertedPath}" "${filePath}"`;
         await execAsync(cmd);
         
+        // Run inkscape CLI to get SVG for font extraction
+        const svgName = `${base}_${timestamp}.svg`;
+        const svgPath = path.join(uploadsDir, svgName);
+        const fontCmd = `"${path.join('C:', 'Program Files', 'Inkscape', 'bin', 'inkscape.com')}" --export-plain-svg="${svgPath}" "${filePath}"`;
+        let appliedFonts: string[] = [];
+        try {
+          await execAsync(fontCmd);
+          const svgContent = await fs.readFile(svgPath, 'utf8');
+          const matches = svgContent.matchAll(/font-family="([^"]+)"/g);
+          const fontSet = new Set<string>();
+          for (const match of matches) {
+            const fontName = match[1].split(',')[0].replace(/['"]/g, '').trim();
+            if (fontName && !['sans-serif', 'serif', 'monospace'].includes(fontName.toLowerCase())) {
+              fontSet.add(fontName);
+            }
+          }
+          appliedFonts = Array.from(fontSet);
+          await fs.unlink(svgPath).catch(() => {});
+        } catch (fontErr) {
+          console.error("Failed to extract fonts:", fontErr);
+        }
+
         // Get file size
         const stats = await fs.stat(convertedPath);
         const fileSizeMb = (stats.size / (1024 * 1024)).toFixed(2);
@@ -55,6 +77,7 @@ export async function POST(request: Request) {
           originalUrl: publicUrl,
           convertedUrl: convertedUrl,
           fileSizeMb: Number(fileSizeMb),
+          appliedFonts: appliedFonts,
           success: true
         }, { headers: getCorsHeaders() });
       } catch (convErr: any) {

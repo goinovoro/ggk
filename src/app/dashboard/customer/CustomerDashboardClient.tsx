@@ -189,9 +189,9 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
         dpi: 300,
         background: "Intact",
         conversionTime: `${(Date.now() - startTime) / 1000}s`,
-        accuracyScore: "100%",
-        appliedFonts: [],
-        accuracyStatus: "Pass: Alpha Layer Intact"
+        accuracyScore: data.appliedFonts && data.appliedFonts.length > 0 ? "85%" : "100%",
+        appliedFonts: data.appliedFonts || [],
+        accuracyStatus: data.appliedFonts && data.appliedFonts.length > 0 ? "Warning: Custom Fonts Detected" : "Pass: Alpha Layer Intact"
       })
       setConversionState("completed")
       setConversionStage("Done")
@@ -305,7 +305,7 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
         originalFileUrl,
         convertedFileUrl,
         paymentProofUrl: finalBuktiUrl,
-        missingFonts: preFlightDetails?.missingFonts
+        missingFonts: preFlightDetails?.appliedFonts
       })
       
       if (newOrder && newOrder.error) {
