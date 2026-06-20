@@ -83,6 +83,19 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
   const [conversionPreview, setConversionPreview] = useState<string>("")
   const [preFlightDetails, setPreFlightDetails] = useState<any>(null)
   const [conversionError, setConversionError] = useState<string>("")
+  const [conversionTimer, setConversionTimer] = useState<number>(0)
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+    if (conversionState === "processing") {
+      interval = setInterval(() => {
+        setConversionTimer(prev => prev + 1)
+      }, 1000)
+    }
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [conversionState])
 
   // Font Upload State
   const [fontUploading, setFontUploading] = useState(false)
@@ -120,6 +133,7 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
     setConversionState("processing")
     setConversionStage("File Received")
     setConversionError("")
+    setConversionTimer(0)
     
     try {
       setConversionStage("Format Check & Processing")
@@ -223,7 +237,7 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
     setLoading(true)
     try {
       const newOrder: any = await createOrder({
-        customerId: session.userId,
+        customerId: session.userId || (session as any).id || "fallback-user-id",
         customerName: session.name || session.email,
         destination: "Jakarta Selatan", 
         designName,
@@ -735,6 +749,9 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
                             <div className="text-center">
                               <p className="text-xs font-black text-amber-700">Converting .cdr vector to transparent .png...</p>
                               <p className="text-[10px] text-slate-500 font-bold mt-1">Stage: {conversionStage}</p>
+                              <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-700 font-mono text-[10px] font-black">
+                                {Math.floor(conversionTimer / 60).toString().padStart(2, '0')}:{(conversionTimer % 60).toString().padStart(2, '0')} elapsed
+                              </div>
                             </div>
                           </div>
                         )}

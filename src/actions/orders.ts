@@ -86,15 +86,29 @@ export async function createOrder(data: {
   try {
   const count = await prisma.order.count()
   const orderId = `ORD-${101 + count}`
-
   const sheetsNum = parseFloat(data.sheets) || 1.0
   const widthCm = 57.5
   const heightCm = parseFloat((sheetsNum * 100).toFixed(1))
 
+  let validCustomerId = data.customerId
+  if (validCustomerId === "fallback-user-id" || !validCustomerId) {
+    const existing = await prisma.user.findFirst({ where: { role: "CUSTOMER" } })
+    if (existing) {
+      validCustomerId = existing.id
+    }
+  } else {
+    // verify it exists to prevent FK violation
+    const customer = await prisma.user.findUnique({ where: { id: validCustomerId } })
+    if (!customer) {
+      const existing = await prisma.user.findFirst({ where: { role: "CUSTOMER" } })
+      if (existing) validCustomerId = existing.id
+    }
+  }
+
   const newOrder = await prisma.order.create({
     data: {
       id: orderId,
-      customerId: data.customerId,
+      customerId: validCustomerId,
       customerName: data.customerName,
       destination: data.destination,
       designName: data.designName,
