@@ -1015,6 +1015,43 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
         </div>
 
       </div>
+      {/* Active Orders Tracker */}
+      <div className="space-y-4 pt-4 pb-4">
+        <h3 className="text-xl font-black text-neutral-dark tracking-tight">Pesanan Aktif</h3>
+        {activeOrders.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {activeOrders.map((order) => (
+              <div key={order.id} className="p-4 bg-white border border-primary/20 rounded-2xl shadow-sm relative overflow-hidden flex flex-col gap-3">
+                <div className="absolute top-0 left-0 w-full h-1 bg-slate-100">
+                   <div className="h-full bg-primary transition-all duration-1000 ease-in-out" style={{ width: `${order.status === 'VERIFICATION' ? 10 : order.status === 'PRINTING' ? 10 + ((order.progress || 0) * 0.4) : order.status === 'PACKING' ? 70 : order.status === 'DISPATCH' ? 90 : 100}%` }}></div>
+                </div>
+                <div className="flex justify-between items-start pt-2">
+                   <div>
+                     <p className="font-black text-sm text-neutral-dark">{order.id}</p>
+                     <p className="text-[10px] text-slate-400 font-bold mt-0.5">{order.designName} • {order.sheets}</p>
+                   </div>
+                   <span className="px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-black uppercase tracking-widest rounded shadow-sm whitespace-nowrap">
+                     {order.status === 'VERIFICATION' && "Menunggu Verifikasi"}
+                     {order.status === 'PRINTING' && "Sedang Dicetak"}
+                     {order.status === 'PACKING' && "Proses Packing"}
+                     {order.status === 'DISPATCH' && "Dalam Pengiriman"}
+                   </span>
+                </div>
+                {order.status === 'PRINTING' && (order.progress || 0) > 0 && (
+                  <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
+                    <div className="bg-amber-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${order.progress}%` }}></div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-8 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400 bg-slate-50/50">
+            <Layers size={32} className="mb-2 opacity-50" />
+            <p className="text-xs font-bold tracking-tight">Tidak ada pesanan aktif saat ini.</p>
+          </div>
+        )}
+      </div>
 
       {/* History Grid */}
       <div className="space-y-4 pt-4">
