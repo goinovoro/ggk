@@ -43,15 +43,14 @@ export async function POST(request: Request) {
       const convertedUrl = `/uploads/${convertedName}`;
 
       try {
-        // Run inkscape CLI to get PNG
-        const cmd = `"${path.join('C:', 'Program Files', 'Inkscape', 'bin', 'inkscape.com')}" --export-filename="${convertedPath}" "${filePath}"`;
-        await execAsync(cmd);
-        
-        // Run inkscape CLI to get SVG for font extraction
+        // 1. Run inkscape CLI to get SVG for font extraction
         const svgName = `${base}_${timestamp}.svg`;
         const svgPath = path.join(uploadsDir, svgName);
         const fontCmd = `"${path.join('C:', 'Program Files', 'Inkscape', 'bin', 'inkscape.com')}" --export-filename="${svgPath}" "${filePath}"`;
         let appliedFonts: string[] = [];
+        let autoInstalledFonts: string[] = [];
+        let unresolvedFonts: string[] = [];
+        
         try {
           await execAsync(fontCmd);
           const svgContent = await fs.readFile(svgPath, 'utf8');
@@ -65,9 +64,54 @@ export async function POST(request: Request) {
           }
           appliedFonts = Array.from(fontSet);
           await fs.unlink(svgPath).catch(() => {});
+          
+          // 2. Auto-install missing fonts
+          for (const font of appliedFonts) {
+            try {
+              let isInstalled = false;
+              try {
+                const checkCmd = `powershell -Command "Get-ItemProperty 'HKCU:\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts' -ErrorAction SilentlyContinue | Out-String"`;
+                const { stdout } = await execAsync(checkCmd);
+                if (stdout.includes(font)) isInstalled = true;
+              } catch(e) {}
+              
+              if (!isInstalled) {
+                console.log(`Font ${font} is missing. Auto-installing from Google Fonts...`);
+                const url = `https://fonts.googleapis.com/css?family=${encodeURIComponent(font)}`;
+                const cssRes = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Linux; U; Android 2.2; en-us; Nexus One Build/FRF91) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1' } });
+                const css = await cssRes.text();
+                
+                const ttfMatch = css.match(/url\((https:\/\/[^)]+\.ttf)\)/);
+                if (ttfMatch && ttfMatch[1]) {
+                  const ttfUrl = ttfMatch[1];
+                  const ttfRes = await fetch(ttfUrl);
+                  const arrayBuffer = await ttfRes.arrayBuffer();
+                  
+                  const tempFontPath = path.join(process.cwd(), 'public', 'uploads', `${font.replace(/\s+/g, '')}.ttf`);
+                  await fs.writeFile(tempFontPath, Buffer.from(arrayBuffer));
+                  
+                  const installCmd = `powershell -Command "$FontFolder = (New-Object -ComObject Shell.Application).Namespace(0x14); $FontFolder.CopyHere('${tempFontPath}')"`;
+                  await execAsync(installCmd);
+                  autoInstalledFonts.push(font);
+                  console.log(`Successfully installed ${font}`);
+                  
+                  await fs.unlink(tempFontPath).catch(() => {});
+                } else {
+                  unresolvedFonts.push(font);
+                }
+              }
+            } catch(e) {
+              console.error(`Error auto-installing font ${font}:`, e);
+              unresolvedFonts.push(font);
+            }
+          }
         } catch (fontErr) {
           console.error("Failed to extract fonts:", fontErr);
         }
+
+        // 3. Run inkscape CLI to get final PNG (now with fonts installed)
+        const cmd = `"${path.join('C:', 'Program Files', 'Inkscape', 'bin', 'inkscape.com')}" --export-filename="${convertedPath}" "${filePath}"`;
+        await execAsync(cmd);
 
         // Get file size
         const stats = await fs.stat(convertedPath);
@@ -78,6 +122,8 @@ export async function POST(request: Request) {
           convertedUrl: convertedUrl,
           fileSizeMb: Number(fileSizeMb),
           appliedFonts: appliedFonts,
+          autoInstalledFonts: autoInstalledFonts,
+          unresolvedFonts: unresolvedFonts,
           success: true
         }, { headers: getCorsHeaders() });
       } catch (convErr: any) {
