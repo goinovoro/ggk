@@ -84,6 +84,7 @@ export async function createOrder(data: {
   missingFonts?: string[]
   previewUrl?: string
 }) {
+  try {
   const count = await prisma.order.count()
   const orderId = `ORD-${101 + count}`
 
@@ -143,6 +144,10 @@ export async function createOrder(data: {
   revalidatePath("/dashboard/ops")
   revalidatePath("/dashboard/customer")
   return mapToFrontendOrder(newOrder)
+  } catch (error: any) {
+    console.error("Server Action createOrder failed:", error)
+    return { error: error.message || String(error) }
+  }
 }
 
 export async function updateOrderStatus(

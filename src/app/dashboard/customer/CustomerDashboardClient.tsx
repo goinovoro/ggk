@@ -222,7 +222,7 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
 
     setLoading(true)
     try {
-      const newOrder = await createOrder({
+      const newOrder: any = await createOrder({
         customerId: session.userId,
         customerName: session.name || session.email,
         destination: "Jakarta Selatan", 
@@ -235,6 +235,12 @@ export default function CustomerDashboardClient({ session, initialOrders }: Cust
         missingFonts: preFlightDetails?.missingFonts,
         previewUrl: conversionPreview
       })
+      
+      if (newOrder && newOrder.error) {
+        alert("Server Error: " + newOrder.error)
+        setLoading(false)
+        return
+      }
       
       setOrders([newOrder, ...orders])
       
