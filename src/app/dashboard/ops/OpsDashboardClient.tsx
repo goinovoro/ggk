@@ -806,7 +806,7 @@ export default function OpsDashboardClient({ initialRole, userName }: OpsDashboa
             <div className="w-full aspect-[3/4] bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden relative flex flex-col items-center justify-center">
               <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-400 to-transparent pointer-events-none"></div>
               {orders.find(o => o.id === viewingBuktiFor)?.paymentProofUrl ? (
-                <img src={orders.find(o => o.id === viewingBuktiFor)?.paymentProofUrl} alt="Bukti Transfer" className="w-full h-full object-contain relative z-10 bg-black/5" />
+                <img src={orders.find(o => o.id === viewingBuktiFor)?.paymentProofUrl || undefined} alt="Bukti Transfer" className="w-full h-full object-contain relative z-10 bg-black/5" />
               ) : (
                 <>
                   <ImageIcon size={64} className="text-slate-300 mb-4" />
