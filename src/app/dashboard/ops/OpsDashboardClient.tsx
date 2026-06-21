@@ -54,6 +54,9 @@ interface Order {
   progress: number
   driver: string
   printing?: boolean
+  paymentProofUrl?: string | null
+  originalFileUrl?: string | null
+  convertedFileUrl?: string | null
 }
 
 const INITIAL_ORDERS: Order[] = []
